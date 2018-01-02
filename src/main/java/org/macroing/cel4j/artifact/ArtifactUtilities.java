@@ -1,5 +1,5 @@
 /**
- * Copyright 2009 - 2017 J&#246;rgen Lundgren
+ * Copyright 2009 - 2018 J&#246;rgen Lundgren
  * 
  * This file is part of org.macroing.cel4j.artifact.
  * 
@@ -18,19 +18,10 @@
  */
 package org.macroing.cel4j.artifact;
 
-import java.awt.event.ActionListener;
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.net.URL;
-import java.util.Objects;
 
 import javax.script.ScriptEngineManager;
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
-
-import org.macroing.cit.java.util.Throwables;
 
 final class ArtifactUtilities {
 	private static final ScriptEngineManager DEFAULT_SCRIPT_ENGINE_MANAGER = new ScriptEngineManager();
@@ -42,29 +33,6 @@ final class ArtifactUtilities {
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	public static ActionListener newExitActionListener(final JFrame jFrame) {
-		return e -> {
-			switch(JOptionPane.showConfirmDialog(jFrame, "Are you sure you want to quit?")) {
-				case JOptionPane.OK_OPTION:
-					System.exit(0);
-					
-					break;
-				default:
-					break;
-			}
-		};
-	}
-	
-	public static Icon createIcon(final String path, final String description) {
-		final URL uRL = ArtifactUtilities.class.getResource(Objects.requireNonNull(path, "path == null"));
-		
-		if(uRL != null) {
-			return new ImageIcon(uRL, Objects.requireNonNull(description, "description == null"));
-		}
-		
-		return null;
-	}
 	
 	public static ScriptEngineManager getDefaultScriptEngineManager() {
 		return DEFAULT_SCRIPT_ENGINE_MANAGER;

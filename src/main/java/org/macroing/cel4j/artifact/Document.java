@@ -1,5 +1,5 @@
 /**
- * Copyright 2009 - 2017 J&#246;rgen Lundgren
+ * Copyright 2009 - 2018 J&#246;rgen Lundgren
  * 
  * This file is part of org.macroing.cel4j.artifact.
  * 
@@ -18,36 +18,31 @@
  */
 package org.macroing.cel4j.artifact;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Objects;
 
-import javax.swing.JTextArea;
-import javax.swing.SwingUtilities;
-
-final class JTextAreaOutputStreamDecorator extends OutputStream {
-	private final JTextArea jTextArea;
-	private final OutputStream outputStream;
+final class Document {
+	private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	public JTextAreaOutputStreamDecorator(final JTextArea jTextArea, final OutputStream outputStream) {
-		this.jTextArea = Objects.requireNonNull(jTextArea, "jTextArea == null");
-		this.outputStream = Objects.requireNonNull(outputStream, "outputStream == null");
+	private final StringBuilder stringBuilder = new StringBuilder();
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	public Document() {
+		
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
+	public Document linef(final String string, final Object... objects) {
+		this.stringBuilder.append(String.format(Objects.requireNonNull(string, "textAfterIndentationFormat == null"), Objects.requireNonNull(objects, "objects == null")) + LINE_SEPARATOR);
+		
+		return this;
+	}
+	
 	@Override
-	public void write(final int b) throws IOException {
-		this.outputStream.write(b);
-		
-		final byte[] bytes = new byte[] {(byte)(b)};
-		
-		final String string = new String(bytes, "ISO-8859-1");
-		
-		final Runnable runnable = () -> this.jTextArea.append(string);
-		
-		SwingUtilities.invokeLater(runnable);
+	public String toString() {
+		return this.stringBuilder.toString();
 	}
 }

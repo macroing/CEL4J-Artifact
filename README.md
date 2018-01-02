@@ -1,4 +1,4 @@
-CEL4J Artifact (v. 0.0.1)
+CEL4J Artifact (v. 0.1.0)
 =========================
 CEL4J Artifact is a library that provides a ScriptEngine extension called Artifact, that evaluates a super-set of Java source code.
 
@@ -48,7 +48,6 @@ public class HelloWorld {
 Dependencies
 ------------
  - [Java 8 + tools.jar](http://www.java.com).
- - [CIT Java](https://github.com/macroing/CIT-Java)
 
 Note
 ----

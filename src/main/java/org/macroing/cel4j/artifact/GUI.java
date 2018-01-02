@@ -1,5 +1,5 @@
 /**
- * Copyright 2009 - 2017 J&#246;rgen Lundgren
+ * Copyright 2009 - 2018 J&#246;rgen Lundgren
  * 
  * This file is part of org.macroing.cel4j.artifact.
  * 
@@ -21,13 +21,27 @@ package org.macroing.cel4j.artifact;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
+import java.net.URL;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
+import javax.swing.AbstractAction;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
@@ -36,6 +50,13 @@ import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
 
 final class GUI implements Runnable {
 	private final JFrame jFrame = new JFrame();
@@ -96,7 +117,7 @@ final class GUI implements Runnable {
 		this.jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.jFrame.setJMenuBar(this.jMenuBar);
 		this.jFrame.setSize(800, 600);
-		this.jFrame.setTitle("Artifact - v. 0.1-beta");
+		this.jFrame.setTitle("Artifact - v. 0.1.0");
 		this.jFrame.setLocationRelativeTo(null);
 		this.jFrame.setVisible(true);
 	}
@@ -111,7 +132,7 @@ final class GUI implements Runnable {
 	}
 	
 	private void doConfigureJMenuItem1() {
-		this.jMenuItem1.addActionListener(ArtifactUtilities.newExitActionListener(this.jFrame));
+		this.jMenuItem1.addActionListener(doNewExitActionListener(this.jFrame));
 		this.jMenuItem1.setText("Exit");
 	}
 	
@@ -149,7 +170,7 @@ final class GUI implements Runnable {
 	}
 	
 	private void doConfigureJToolBar() {
-		this.jToolBar.add(new EvaluatingAction(this.jTextPane, this.extension)).setIcon(ArtifactUtilities.createIcon("Evaluate.png", "Evaluate"));
+		this.jToolBar.add(new EvaluatingAction(this.jTextPane, this.extension)).setIcon(doCreateIcon("Evaluate.png", "Evaluate"));
 		this.jToolBar.setFloatable(false);
 	}
 	
@@ -167,7 +188,231 @@ final class GUI implements Runnable {
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
+	private static ActionListener doNewExitActionListener(final JFrame jFrame) {
+		return e -> {
+			switch(JOptionPane.showConfirmDialog(jFrame, "Are you sure you want to quit?")) {
+				case JOptionPane.OK_OPTION:
+					System.exit(0);
+					
+					break;
+				default:
+					break;
+			}
+		};
+	}
+	
+	private static Icon doCreateIcon(final String path, final String description) {
+		final URL uRL = ArtifactUtilities.class.getResource(Objects.requireNonNull(path, "path == null"));
+		
+		if(uRL != null) {
+			return new ImageIcon(uRL, Objects.requireNonNull(description, "description == null"));
+		}
+		
+		return null;
+	}
+	
 	private static void doStart(final String extension) {
 		SwingUtilities.invokeLater(new GUI(extension));
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	private static final class EvaluatingAction extends AbstractAction {
+		private static final long serialVersionUID = 1L;
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		private final JTextPane jTextPane;
+		private final ScriptEngine scriptEngine;
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		public EvaluatingAction(final JTextPane jTextPane, final String extension) {
+			this.jTextPane = Objects.requireNonNull(jTextPane, "jTextPane == null");
+			this.scriptEngine = ArtifactUtilities.getDefaultScriptEngineManager().getEngineByExtension(extension);
+		}
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		@Override
+		public void actionPerformed(final ActionEvent actionEvent) {
+			try {
+				this.scriptEngine.eval(this.jTextPane.getDocument().getText(0, this.jTextPane.getDocument().getLength()));
+			} catch(final BadLocationException | ScriptException e) {
+				Throwables.handleThrowable(e);
+			}
+		}
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	private static final class JJavaTextPane extends JTextPane {
+		private static final long serialVersionUID = 1L;
+		private static final Pattern PATTERN_1 = Pattern.compile("\\b(abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|double|do|else|enum|extends|false|finally|final|float|for|if|goto|implements|import|instanceof|interface|int|long|new|null|package|private|protected|public|return|short|static|strictf|super|switch|synchronized|this|throws|throw|transient|true|try|void|volatile|while)\\b");
+		private static final Pattern PATTERN_2 = Pattern.compile("\"(\\\\[\\\\\"'()bfnrt]|[^\\\\\"])*\"");
+		private static final Pattern PATTERN_3 = Pattern.compile("(//|#).*$", Pattern.MULTILINE);
+		private static final StyleContext STYLE_CONTEXT = StyleContext.getDefaultStyleContext();
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		private final AttributeSet attributeSet1 = doCreateAttributeSet1();
+		private final AttributeSet attributeSet2 = doCreateAttributeSet2();
+		private final AttributeSet attributeSet3 = doCreateAttributeSet3();
+		private final AttributeSet attributeSet4 = doCreateAttributeSet4();
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		public JJavaTextPane() {
+			addCaretListener(new CaretListenerImpl());
+			setMargin(new Insets(10,10,10,10));
+		}
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		private static AttributeSet doCreateAttributeSet1() {
+			final AttributeSet attributeSet0 = STYLE_CONTEXT.addAttribute(STYLE_CONTEXT.getEmptySet(), StyleConstants.Foreground, Color.BLACK);
+			final AttributeSet attributeSet1 = STYLE_CONTEXT.addAttribute(attributeSet0, StyleConstants.FontFamily, Font.MONOSPACED);
+			final AttributeSet attributeSet2 = STYLE_CONTEXT.addAttribute(attributeSet1, StyleConstants.FontSize, Integer.valueOf(16));
+			
+			return attributeSet2;
+		}
+		
+		private static AttributeSet doCreateAttributeSet2() {
+			final AttributeSet attributeSet0 = STYLE_CONTEXT.addAttribute(STYLE_CONTEXT.getEmptySet(), StyleConstants.Foreground, new Color(127, 0, 85));
+			final AttributeSet attributeSet1 = STYLE_CONTEXT.addAttribute(attributeSet0, StyleConstants.FontFamily, Font.MONOSPACED);
+			final AttributeSet attributeSet2 = STYLE_CONTEXT.addAttribute(attributeSet1, StyleConstants.FontSize, Integer.valueOf(16));
+			final AttributeSet attributeSet3 = STYLE_CONTEXT.addAttribute(attributeSet2, StyleConstants.Bold, Boolean.TRUE);
+			
+			return attributeSet3;
+		}
+		
+		private static AttributeSet doCreateAttributeSet3() {
+			final AttributeSet attributeSet0 = STYLE_CONTEXT.addAttribute(STYLE_CONTEXT.getEmptySet(), StyleConstants.Foreground, Color.BLUE);
+			final AttributeSet attributeSet1 = STYLE_CONTEXT.addAttribute(attributeSet0, StyleConstants.FontFamily, Font.MONOSPACED);
+			final AttributeSet attributeSet2 = STYLE_CONTEXT.addAttribute(attributeSet1, StyleConstants.FontSize, Integer.valueOf(16));
+			
+			return attributeSet2;
+		}
+		
+		private static AttributeSet doCreateAttributeSet4() {
+			final AttributeSet attributeSet0 = STYLE_CONTEXT.addAttribute(STYLE_CONTEXT.getEmptySet(), StyleConstants.Foreground, new Color(63, 127, 95));
+			final AttributeSet attributeSet1 = STYLE_CONTEXT.addAttribute(attributeSet0, StyleConstants.FontFamily, Font.MONOSPACED);
+			final AttributeSet attributeSet2 = STYLE_CONTEXT.addAttribute(attributeSet1, StyleConstants.FontSize, Integer.valueOf(16));
+			
+			return attributeSet2;
+		}
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		private final class CaretListenerImpl implements CaretListener {
+			public CaretListenerImpl() {
+				
+			}
+			
+			////////////////////////////////////////////////////////////////////////////////////////////////////
+			
+			@Override
+			public void caretUpdate(final CaretEvent e) {
+				final
+				SwingWorker<Void, Void> swingWorker = new SwingWorkerImpl();
+				swingWorker.execute();
+			}
+		}
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		private final class SwingWorkerImpl extends SwingWorker<Void, Void> {
+			public SwingWorkerImpl() {
+				
+			}
+			
+			////////////////////////////////////////////////////////////////////////////////////////////////////
+			
+			@Override
+			protected Void doInBackground() {
+				try {
+					doMatch(JJavaTextPane.this.getDocument().getText(0, JJavaTextPane.this.getDocument().getLength()));
+				} catch(final BadLocationException e) {
+//					Do nothing.
+				}
+				
+				return null;
+			}
+			
+			@Override
+			protected void done() {
+//				Do nothing.
+			}
+			
+			////////////////////////////////////////////////////////////////////////////////////////////////////
+			
+			private void doMatch(final String string){
+				doResetStyledDocument();
+				doMatchPattern1(string);
+				doMatchPattern2(string);
+				doMatchPattern3(string);
+			}
+			
+			@SuppressWarnings("synthetic-access")
+			private void doMatchPattern1(final String string) {
+				final Matcher matcher = PATTERN_1.matcher(string);
+				
+				while(matcher.find()) {
+					JJavaTextPane.this.getStyledDocument().setCharacterAttributes(matcher.start(1), matcher.end(1) - matcher.start(1), JJavaTextPane.this.attributeSet2, true);
+				}
+			}
+			
+			@SuppressWarnings("synthetic-access")
+			private void doMatchPattern2(final String string) {
+				final Matcher matcher = PATTERN_2.matcher(string);
+				
+				while(matcher.find()) {
+					JJavaTextPane.this.getStyledDocument().setCharacterAttributes(matcher.start(), matcher.end() - matcher.start(), JJavaTextPane.this.attributeSet3, true);
+				}
+			}
+			
+			@SuppressWarnings("synthetic-access")
+			private void doMatchPattern3(final String string) {
+				final Matcher matcher = PATTERN_3.matcher(string);
+				
+				while(matcher.find()) {
+					JJavaTextPane.this.getStyledDocument().setCharacterAttributes(matcher.start(), matcher.end() - matcher.start(), JJavaTextPane.this.attributeSet4, true);
+				}
+			}
+			
+			@SuppressWarnings("synthetic-access")
+			private void doResetStyledDocument() {
+				JJavaTextPane.this.getStyledDocument().setCharacterAttributes(0, JJavaTextPane.this.getDocument().getLength(), JJavaTextPane.this.attributeSet1, true);
+			}
+		}
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	private static final class JTextAreaOutputStreamDecorator extends OutputStream {
+		private final JTextArea jTextArea;
+		private final OutputStream outputStream;
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		public JTextAreaOutputStreamDecorator(final JTextArea jTextArea, final OutputStream outputStream) {
+			this.jTextArea = Objects.requireNonNull(jTextArea, "jTextArea == null");
+			this.outputStream = Objects.requireNonNull(outputStream, "outputStream == null");
+		}
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		@Override
+		public void write(final int b) throws IOException {
+			this.outputStream.write(b);
+			
+			final byte[] bytes = new byte[] {(byte)(b)};
+			
+			final String string = new String(bytes, "ISO-8859-1");
+			
+			final Runnable runnable = () -> this.jTextArea.append(string);
+			
+			SwingUtilities.invokeLater(runnable);
+		}
 	}
 }

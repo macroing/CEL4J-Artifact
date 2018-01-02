@@ -1,5 +1,5 @@
 /**
- * Copyright 2009 - 2017 J&#246;rgen Lundgren
+ * Copyright 2009 - 2018 J&#246;rgen Lundgren
  * 
  * This file is part of org.macroing.cel4j.artifact.
  * 
@@ -23,6 +23,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -30,6 +33,7 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,10 +56,6 @@ import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
-
-import org.macroing.cit.java.util.ClassPath;
-import org.macroing.cit.java.util.Document;
-import org.macroing.cit.java.util.Objects2;
 
 final class ArtifactScriptEngine extends AbstractScriptEngine implements Compilable {
 	private static final AtomicInteger IDENTIFIER = new AtomicInteger(0);
@@ -123,8 +123,7 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		final File sourceDirectory = doGetSourceDirectory();
 		final File sourceFile = doGetSourceFile(directory, className);
 		
-		ClassPath.addToClassPath(binaryDirectory);
-		
+		doAddToClassPath(binaryDirectory);
 		doGenerateSourceCode(packageName, className, script0, sourceFile);
 		
 		try {
@@ -255,7 +254,6 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		document.linef("import javax.tools.*;");
 		document.linef("");
 		document.linef("import org.macroing.cel4j.artifact.*;");
-		document.linef("import org.macroing.cit.java.util.*;");
 		document.linef("");
 		
 		if(this.imports.size() > 0) {
@@ -273,24 +271,28 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		document.linef("	}");
 		document.linef("	");
 		document.linef("	@Override");
-		document.linef("	public Object eval(final ScriptContext scriptContext) {");
+		document.linef("	public Object eval(final ScriptContext scriptContext) throws ScriptException {");
+		document.linef("		Exception exception = null;");
+		document.linef("		");
 		document.linef("		try {");
 		document.linef("			%s", script);
-		document.linef("		} catch(final Throwable throwable) {");
-		document.linef("			Throwables.handleThrowable(throwable);");
+		document.linef("		} catch(final Exception e) {");
+		document.linef("			exception = e;");
 		document.linef("		}");
 		document.linef("		");
-		document.linef("		return null;");
+		document.linef("		if(exception != null) {");
+		document.linef("			throw new ScriptException(exception);");
+		document.linef("		} else {");
+		document.linef("			return null;");
+		document.linef("		}");
 		document.linef("	}");
 		document.linef("	");
-		document.linef("	public Object eval(final String script) {");
+		document.linef("	public Object eval(final String script) throws ScriptException {");
 		document.linef("		try {");
 		document.linef("			return scriptEngine.eval(script);");
-		document.linef("		} catch(final Throwable throwable) {");
-		document.linef("			Throwables.handleThrowable(throwable);");
+		document.linef("		} catch(final Exception e) {");
+		document.linef("			throw new ScriptException(e);");
 		document.linef("		}");
-		document.linef("		");
-		document.linef("		return null;");
 		document.linef("	}");
 		document.linef("	");
 		document.linef("	public Object get(final String name) {");
@@ -445,7 +447,7 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 			
 			className = className.replace(";", "");
 			className = className.replaceAll("\\[{" + dimensions + "," + dimensions + "}L", "");
-			className = className + Objects2.repeat("[]", dimensions);
+			className = className + String.join("", Collections.nCopies(dimensions, "[]"));
 		}
 		
 		return className + ".class.cast(scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(\"" + variableName + "\"))";
@@ -523,6 +525,20 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 			return new URI(string);
 		} catch(final URISyntaxException e) {
 			return null;
+		}
+	}
+	
+	private static void doAddToClassPath(final File file) {
+		try {
+			final Method method = URLClassLoader.class.getDeclaredMethod("addURL", new Class<?>[]{URL.class});
+			
+			final boolean isAccessible = method.isAccessible();
+			
+			method.setAccessible(true);
+			method.invoke(URLClassLoader.class.cast(ClassLoader.getSystemClassLoader()), new Object[]{file.toURI().toURL()});
+			method.setAccessible(isAccessible);
+		} catch(final IllegalAccessException | InvocationTargetException | MalformedURLException | NoSuchMethodException e) {
+			throw new UnsupportedOperationException(e);
 		}
 	}
 	
