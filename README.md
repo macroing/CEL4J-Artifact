@@ -22,6 +22,8 @@ Supported Features
 
 Examples
 --------
+The following example demonstrates how you can use Artifact:
+
 ```java
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -42,6 +44,82 @@ public class HelloWorld {
     }
 }
 ```
+
+The following example demonstrates some of the features provided by Artifact:
+
+```java
+//Here we show how to change the package using the package pragma:
+#package org.macroing.cel4j.artifact.example;
+
+//Here we show how to import all public members of a class using the import pragma:
+#import static java.lang.Math.*;
+
+double a = 3.0D;
+double b = 5.0D;
+
+//Here we show that the static import worked:
+double max = max(a, b);
+double min = min(a, b);
+
+//Here we show the eval(String) method that can be called from within the script:
+Object result = eval(String.format("return %s + %s;", max, min));
+
+//Here we show how to set a value given a key:
+set("result", result);
+
+//Here we show how to get the value using its key once set:
+result = get("result");
+
+//If the key "result" was already associated with a value prior to the evaluation of this script, you could use $result to access it instead.
+
+System.out.println(result);
+
+//Here we show that we can return a result from the script:
+return result;
+```
+
+Imported Packages
+-----------------
+The packages currently imported, as shown in the list below, may change in the future. It may turn out that there are too many ambiguous classes and interfaces.
+
+* `java.lang.Math.*` (static)
+* `java.awt.*`
+* `java.awt.color.*`
+* `java.awt.event.*`
+* `java.awt.font.*`
+* `java.awt.geom.*`
+* `java.awt.image.*`
+* `java.lang.ref.*`
+* `java.lang.reflect.*`
+* `java.math.*`
+* `java.net.*`
+* `java.nio.*`
+* `java.nio.channels.*`
+* `java.nio.charset.*`
+* `java.nio.file.*`
+* `java.nio.file.attribute.*`
+* `java.text.*`
+* `java.util.*`
+* `java.util.concurrent.*`
+* `java.util.concurrent.atomic.*`
+* `java.util.concurrent.locks.*`
+* `java.util.jar.*`
+* `java.util.logging.*`
+* `java.util.prefs.*`
+* `java.util.regex.*`
+* `java.util.zip.*`
+* `javax.script.*`
+* `javax.swing.*`
+* `javax.swing.border.*`
+* `javax.swing.colorchooser.*`
+* `javax.swing.event.*`
+* `javax.swing.filechooser.*`
+* `javax.swing.table.*`
+* `javax.swing.text.*`
+* `javax.swing.tree.*`
+* `javax.swing.undo.*`
+* `javax.tools.*`
+* `org.macroing.cel4j.artifact.*`
 
 Dependencies
 ------------
