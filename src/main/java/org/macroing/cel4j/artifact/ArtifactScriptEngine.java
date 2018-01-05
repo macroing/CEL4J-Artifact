@@ -26,11 +26,9 @@ import java.io.Reader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,17 +56,23 @@ import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
 final class ArtifactScriptEngine extends AbstractScriptEngine implements Compilable {
-	private static final AtomicInteger IDENTIFIER = new AtomicInteger(0);
-	private static final Pattern PATTERN_0 = Pattern.compile("^\\s*#(import|package)\\s+(\\w+(\\.\\w+)(\\.\\*)?\\s*);.*$", Pattern.MULTILINE);
-	private static final Pattern PATTERN_1 = Pattern.compile("\\$\\[(([^\\[\\]]+?=>[^\\[\\]]+?)(\\s*,[^\\[\\]]+?=>[^\\[\\]]+?)*?)\\]", Pattern.DOTALL);
-	private static final Pattern PATTERN_2 = Pattern.compile("\\$\\[(([^\\[\\]]+)(\\s*,[^\\[\\]]+)*?)\\]", Pattern.DOTALL);
-	private static final Pattern PATTERN_3 = Pattern.compile("\\$(\\w+)");
-	private static final String REGEX_0 = "\\s+(?=((\\\\[\\\\\"]|[^\\\\\"])*\"(\\\\[\\\\\"]|[^\\\\\"])*\")*(\\\\[\\\\\"]|[^\\\\\"])*$)";
-	private static final String REGEX_1 = "[\\s,(=>)]+(?=((\\\\[\\\\\"]|[^\\\\\"])*\"(\\\\[\\\\\"]|[^\\\\\"])*\")*(\\\\[\\\\\"]|[^\\\\\"])*$)";
+	private static final AtomicInteger IDENTIFIER;
+	private static final Pattern PATTERN_IMPORT_PRAGMA;
+	private static final Pattern PATTERN_PACKAGE_PRAGMA;
+	private static final Pattern PATTERN_SUBSTITUTION_VARIABLE;
+	private static final String LINE_SEPARATOR;
+	private static final String NAME_IMPORT_PRAGMA;
+	private static final String NAME_PACKAGE_PRAGMA;
+	private static final String REGEX_IDENTIFIER;
+	private static final String REGEX_IMPORT_PRAGMA;
+	private static final String REGEX_PACKAGE_PRAGMA;
+	private static final String REGEX_SUBSTITUTION_VARIABLE;
+	private static final String REGEX_WHITE_SPACE;
+	private static final String TMP_DIRECTORY;
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	private final List<String> imports = new ArrayList<>();
+	private final List<String> importStatements = new ArrayList<>();
 	private final Map<String, CompiledScript> compiledScripts = new HashMap<>();
 	private final ScriptEngineFactory scriptEngineFactory;
 	private String packageName = "org.macroing.cel4j.artifact";
@@ -77,6 +81,28 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	
 	public ArtifactScriptEngine(final ScriptEngineFactory scriptEngineFactory) {
 		this.scriptEngineFactory = Objects.requireNonNull(scriptEngineFactory, "scriptEngineFactory == null");
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	static {
+		IDENTIFIER = new AtomicInteger(0);
+		
+		LINE_SEPARATOR = System.getProperty("line.separator");
+		TMP_DIRECTORY = System.getProperty("java.io.tmpdir");
+		
+		NAME_IMPORT_PRAGMA = "ImportPragma";
+		NAME_PACKAGE_PRAGMA = "PackagePragma";
+		
+		REGEX_IDENTIFIER = "(?!(abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|extends|false|finally|final|float|for|if|goto|implements|import|instanceof|interface|int|long|native|new|null|package|private|protected|public|return|short|static|strictfp|super|switch|synchronized|this|throws|throw|transient|true|try|void|volatile|while)([^\\p{javaJavaIdentifierPart}]|$))\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
+		REGEX_IMPORT_PRAGMA = String.format("#\\s*(?<%s>import(\\s+static)?\\s+%s(\\s*\\.\\s*%s)*?(\\s*\\.\\s*\\*)?\\s*;)", NAME_IMPORT_PRAGMA, REGEX_IDENTIFIER, REGEX_IDENTIFIER);
+		REGEX_PACKAGE_PRAGMA = String.format("#\\s*package\\s+(?<%s>%s(\\s*\\.\\s*%s)*?)\\s*;", NAME_PACKAGE_PRAGMA, REGEX_IDENTIFIER, REGEX_IDENTIFIER);
+		REGEX_SUBSTITUTION_VARIABLE = String.format("\\$(%s)", REGEX_IDENTIFIER);
+		REGEX_WHITE_SPACE = "\\s+(?=((\\\\[\\\\\"]|[^\\\\\"])*\"(\\\\[\\\\\"]|[^\\\\\"])*\")*(\\\\[\\\\\"]|[^\\\\\"])*$)";
+		
+		PATTERN_IMPORT_PRAGMA = Pattern.compile(REGEX_IMPORT_PRAGMA);
+		PATTERN_PACKAGE_PRAGMA = Pattern.compile(REGEX_PACKAGE_PRAGMA);
+		PATTERN_SUBSTITUTION_VARIABLE = Pattern.compile(REGEX_SUBSTITUTION_VARIABLE);
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,24 +191,12 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	
 	private Object doEval(final String script, final ScriptContext scriptContext) throws ScriptException {
 		try {
-			String key = script.replaceAll(REGEX_0, "");
+			final String key = script.replaceAll(REGEX_WHITE_SPACE, "");
 			
 			CompiledScript compiledScript = this.compiledScripts.get(key);
 			
 			if(compiledScript == null) {
-				if(script.startsWith("uri:")) {
-					key = script;
-					
-					compiledScript = this.compiledScripts.get(key);
-					
-					if(compiledScript == null) {
-						final URI uRI = doToURI(script.substring(4));
-						
-						compiledScript = new URIBasedCompiledScript(uRI);
-					}
-				} else {
-					compiledScript = doCompile(script);
-				}
+				compiledScript = doCompile(script);
 				
 				this.compiledScripts.put(key, compiledScript);
 			}
@@ -201,6 +215,8 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		final
 		Document document = new Document();
 		document.linef("package %s;", packageName);
+		document.linef("");
+		document.linef("import static java.lang.Math.*;");
 		document.linef("");
 		document.linef("import java.applet.*;");
 		document.linef("import java.awt.*;");
@@ -256,18 +272,16 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		document.linef("import org.macroing.cel4j.artifact.*;");
 		document.linef("");
 		
-		if(this.imports.size() > 0) {
-			for(final String import_ : this.imports) {
-				document.linef("import %s;", import_);
+		if(this.importStatements.size() > 0) {
+			for(final String importStatement : this.importStatements) {
+				document.linef(importStatement);
 				document.linef("");
 			}
 		}
 		
-		document.linef("public final class %s extends CompiledScript {", className);
-		document.linef("	private final ScriptEngine scriptEngine;");
-		document.linef("	");
+		document.linef("public final class %s extends ArtifactScript {", className);
 		document.linef("	public %s(final ScriptEngine scriptEngine) {", className);
-		document.linef("		this.scriptEngine = scriptEngine;");
+		document.linef("		super(scriptEngine);");
 		document.linef("	}");
 		document.linef("	");
 		document.linef("	@Override");
@@ -287,66 +301,50 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		document.linef("		}");
 		document.linef("	}");
 		document.linef("	");
-		document.linef("	public Object eval(final String script) throws ScriptException {");
-		document.linef("		try {");
-		document.linef("			return scriptEngine.eval(script);");
-		document.linef("		} catch(final Exception e) {");
-		document.linef("			throw new ScriptException(e);");
-		document.linef("		}");
-		document.linef("	}");
-		document.linef("	");
-		document.linef("	public Object get(final String name) {");
-		document.linef("		return name != null ? this.scriptEngine.getBindings(ScriptContext.ENGINE_SCOPE).get(name) : null;");
-		document.linef("	}");
-		document.linef("	");
-		document.linef("	@Override");
-		document.linef("	public ScriptEngine getEngine() {");
-		document.linef("		return scriptEngine;");
-		document.linef("	}");
-		document.linef("	");
-		document.linef("	public void set(final String name, final Object value) {");
-		document.linef("		if(name != null) {");
-		document.linef("			scriptEngine.getBindings(ScriptContext.ENGINE_SCOPE).put(name, value);");
-		document.linef("		}");
-		document.linef("	}");
 		document.linef("}");
 		
 		return document.toString();
 	}
 	
 	private String doSearchAndReplace(String script) throws ScriptException {
-		script = doSearchAndReplacePragmas(script);
-		script = doSearchAndReplaceMaps(script);
-		script = doSearchAndReplaceLists(script);
+		script = doSearchAndReplaceImportPragmas(script);
+		script = doSearchAndReplacePackagePragmas(script);
 		script = doSearchAndReplaceSubstitutionVariables(script);
 		
 		return script;
 	}
 	
-	private String doSearchAndReplacePragmas(final String script) {
+	private String doSearchAndReplaceImportPragmas(final String script) {
 		final StringBuffer stringBuffer = new StringBuffer(script.length());
 		
-		final Matcher matcher = PATTERN_0.matcher(script);
+		final Matcher matcher = PATTERN_IMPORT_PRAGMA.matcher(script);
 		
 		while(matcher.find()) {
-			final String type = matcher.group(1).trim();
-			final String name = matcher.group(2).trim();
+			final String importStatement = matcher.group(NAME_IMPORT_PRAGMA);
 			final String replacement = "";
 			
-			matcher.appendReplacement(stringBuffer, replacement);
+			this.importStatements.add(importStatement);
 			
-			switch(type) {
-				case "import":
-					this.imports.add(name);
-					
-					break;
-				case "package":
-					this.packageName = name;
-					
-					break;
-				default:
-					break;
-			}
+			matcher.appendReplacement(stringBuffer, replacement);
+		}
+		
+		matcher.appendTail(stringBuffer);
+		
+		return stringBuffer.toString();
+	}
+	
+	private String doSearchAndReplacePackagePragmas(final String script) {
+		final StringBuffer stringBuffer = new StringBuffer(script.length());
+		
+		final Matcher matcher = PATTERN_PACKAGE_PRAGMA.matcher(script);
+		
+		while(matcher.find()) {
+			final String packageName = matcher.group(NAME_PACKAGE_PRAGMA);
+			final String replacement = "";
+			
+			this.packageName = packageName;
+			
+			matcher.appendReplacement(stringBuffer, replacement);
 		}
 		
 		matcher.appendTail(stringBuffer);
@@ -357,11 +355,11 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	private String doSearchAndReplaceSubstitutionVariables(final String script) throws ScriptException {
 		final StringBuffer stringBuffer = new StringBuffer(script.length());
 		
-		final Matcher matcher = PATTERN_3.matcher(script);
+		final Matcher matcher = PATTERN_SUBSTITUTION_VARIABLE.matcher(script);
 		
 		while(matcher.find()) {
 			final String variableName = matcher.group(1);
-			final String dynamicCastEvaluation = "return scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(\"" + variableName + "\");";
+			final String dynamicCastEvaluation = String.format("return scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(\"%s\");", variableName);
 			
 			String replacement = "";
 			
@@ -395,7 +393,7 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	
 	private static File doGetBinaryDirectory() {
 		final
-		File file = new File(System.getProperty("java.io.tmpdir"), "artifact/bin");
+		File file = new File(TMP_DIRECTORY, "artifact/bin");
 		file.mkdirs();
 		
 		return file;
@@ -403,7 +401,7 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	
 	private static File doGetSourceDirectory() {
 		final
-		File file = new File(System.getProperty("java.io.tmpdir"), "artifact/src");
+		File file = new File(TMP_DIRECTORY, "artifact/src");
 		file.mkdirs();
 		
 		return file;
@@ -450,81 +448,21 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 			className = className + String.join("", Collections.nCopies(dimensions, "[]"));
 		}
 		
-		return className + ".class.cast(scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(\"" + variableName + "\"))";
+		return String.format("%s.class.cast(scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(\"%s\"))", className, variableName);
 	}
 	
 	private static String doReadFrom(final Reader reader) throws ScriptException {
 		try(final BufferedReader bufferedReader = new BufferedReader(reader)) {
 			final StringBuilder stringBuilder = new StringBuilder();
 			
-			while(bufferedReader.ready()) {
-				stringBuilder.append(bufferedReader.readLine());
-				stringBuilder.append(System.getProperty("line.separator"));
+			for(String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
+				stringBuilder.append(line);
+				stringBuilder.append(LINE_SEPARATOR);
 			}
 			
 			return stringBuilder.toString();
 		} catch(final IOException e) {
 			throw new ScriptException(e);
-		}
-	}
-	
-	private static String doSearchAndReplaceLists(final String script) {
-		final StringBuffer stringBuffer = new StringBuffer(script.length());
-		
-		final Matcher matcher = PATTERN_2.matcher(script);
-		
-		while(matcher.find()) {
-			final String content = matcher.group(1).trim();
-			final String replacement = "new ArrayList<Object>(Arrays.asList(" + content + "))";
-			
-			matcher.appendReplacement(stringBuffer, replacement);
-		}
-		
-		matcher.appendTail(stringBuffer);
-		
-		return stringBuffer.toString();
-	}
-	
-	private static String doSearchAndReplaceMaps(final String script) {
-		final StringBuffer stringBuffer = new StringBuffer(script.length());
-		
-		final Matcher matcher = PATTERN_1.matcher(script);
-		
-		while(matcher.find()) {
-			final String content = matcher.group(1).trim().replace("=>", " => ");
-			
-			String replacement = "";
-			
-			final
-			StringBuilder stringBuilder = new StringBuilder();
-			stringBuilder.append("Collections2.putToMap(");
-			
-			final String[] parts = content.split(REGEX_1);
-			
-			for(int i = 0; i + 1 < parts.length; i += 2) {
-				stringBuilder.append(i > 0 ? ", " : "");
-				stringBuilder.append(parts[i + 0]);
-				stringBuilder.append(", ");
-				stringBuilder.append(parts[i + 1]);
-			}
-			
-			stringBuilder.append(")");
-			
-			replacement = stringBuilder.toString();
-			
-			matcher.appendReplacement(stringBuffer, replacement);
-		}
-		
-		matcher.appendTail(stringBuffer);
-		
-		return stringBuffer.toString();
-	}
-	
-	private static URI doToURI(final String string) {
-		try {
-			return new URI(string);
-		} catch(final URISyntaxException e) {
-			return null;
 		}
 	}
 	
@@ -539,69 +477,6 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 			method.setAccessible(isAccessible);
 		} catch(final IllegalAccessException | InvocationTargetException | MalformedURLException | NoSuchMethodException e) {
 			throw new UnsupportedOperationException(e);
-		}
-	}
-	
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	private final class URIBasedCompiledScript extends CompiledScript {
-		private CompiledScript compiledScript;
-		private final URI uRI;
-		private long lastModified;
-		
-		////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		public URIBasedCompiledScript(final URI uRI) {
-			this.uRI = uRI;
-		}
-		
-		////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		@Override
-		public Object eval(final ScriptContext scriptContext) throws ScriptException {
-			doCompileIfNecessary();
-			
-			return doEval(scriptContext);
-		}
-		
-		@Override
-		public ScriptEngine getEngine() {
-			return ArtifactScriptEngine.this;
-		}
-		
-		////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		private Object doEval(final ScriptContext scriptContext) throws ScriptException {
-			if(this.compiledScript != null) {
-				return this.compiledScript.eval(scriptContext);
-			}
-			
-			return null;
-		}
-		
-		@SuppressWarnings("synthetic-access")
-		private void doCompileIfNecessary() throws ScriptException {
-			try {
-				String script = null;
-				
-				final File file = new File(this.uRI);
-				
-				if(file.isFile() && (this.compiledScript == null || this.lastModified < file.lastModified())) {
-					script = new String(Files.readAllBytes(file.toPath()));
-					
-					this.lastModified = file.lastModified();
-				} else if(this.compiledScript == null) {
-					script = "";
-					
-					this.lastModified = 0L;
-				}
-				
-				if(script != null) {
-					this.compiledScript = doCompile(script);
-				}
-			} catch(final IllegalArgumentException | IOException e) {
-				throw new ScriptException(e);
-			}
 		}
 	}
 }

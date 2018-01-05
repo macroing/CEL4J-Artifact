@@ -27,12 +27,14 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.URL;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.swing.AbstractAction;
 import javax.swing.Icon;
@@ -58,56 +60,73 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyleContext;
 
-final class GUI implements Runnable {
-	private final JFrame jFrame = new JFrame();
-	private final JMenu jMenu1 = new JMenu();
-	private final JMenuBar jMenuBar = new JMenuBar();
-	private final JMenuItem jMenuItem1 = new JMenuItem();
-	private final JScrollPane jScrollPane1 = new JScrollPane();
-	private final JScrollPane jScrollPane2 = new JScrollPane();
-	private final JSplitPane jSplitPane = new JSplitPane();
-	private final JTextArea jTextArea = new JTextArea();
-	private final JTextAreaOutputStreamDecorator jTextAreaOutputStreamDecoratorErr = new JTextAreaOutputStreamDecorator(this.jTextArea, System.err);
-	private final JTextAreaOutputStreamDecorator jTextAreaOutputStreamDecoratorOut = new JTextAreaOutputStreamDecorator(this.jTextArea, System.out);
-	private final JTextPane jTextPane = new JJavaTextPane();
-	private final JToolBar jToolBar = new JToolBar();
+final class GUI {
+	private final JFrame jFrame;
+	private final JMenu jMenu;
+	private final JMenuBar jMenuBar;
+	private final JMenuItem jMenuItem;
+	private final JScrollPane jScrollPane1;
+	private final JScrollPane jScrollPane2;
+	private final JSplitPane jSplitPane;
+	private final JTextArea jTextArea;
+	private final JTextAreaOutputStreamDecorator jTextAreaOutputStreamDecoratorErr;
+	private final JTextAreaOutputStreamDecorator jTextAreaOutputStreamDecoratorOut;
+	private final JTextPane jTextPane;
+	private final JToolBar jToolBar;
 	private final String extension;
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	private GUI(final String extension) {
 		this.extension = extension;
+		this.jFrame = new JFrame();
+		this.jMenu = new JMenu();
+		this.jMenuBar = new JMenuBar();
+		this.jMenuItem = new JMenuItem();
+		this.jScrollPane1 = new JScrollPane();
+		this.jScrollPane2 = new JScrollPane();
+		this.jSplitPane = new JSplitPane();
+		this.jTextArea = new JTextArea();
+		this.jTextAreaOutputStreamDecoratorErr = new JTextAreaOutputStreamDecorator(this.jTextArea, System.err);
+		this.jTextAreaOutputStreamDecoratorOut = new JTextAreaOutputStreamDecorator(this.jTextArea, System.out);
+		this.jTextPane = new JJavaTextPane();
+		this.jToolBar = new JToolBar();
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	@Override
-	public void run() {
-		doConfigure();
+	public void start() {
+		doConfigureComponents();
+		doConfigureSystemErr();
+		doConfigureSystemOut();
+		doConfigureThread();
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	public static void start(final String extension) {
-		doStart(Objects.requireNonNull(extension, "extension == null"));
+		Objects.requireNonNull(extension, "extesion == null");
+		
+		SwingUtilities.invokeLater(() -> {
+			final
+			GUI gUI = new GUI(extension);
+			gUI.start();
+		});
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	private void doConfigure() {
+	private void doConfigureComponents() {
 		doConfigureJFrame();
-		doConfigureJMenu1();
+		doConfigureJMenu();
 		doConfigureJMenuBar();
-		doConfigureJMenuItem1();
+		doConfigureJMenuItem();
 		doConfigureJScrollPane1();
 		doConfigureJScrollPane2();
 		doConfigureJSplitPane();
 		doConfigureJTextArea();
 		doConfigureJTextPane();
 		doConfigureJToolBar();
-		doConfigureSystemErr();
-		doConfigureSystemOut();
-		doConfigureThread();
 	}
 	
 	private void doConfigureJFrame() {
@@ -117,23 +136,23 @@ final class GUI implements Runnable {
 		this.jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.jFrame.setJMenuBar(this.jMenuBar);
 		this.jFrame.setSize(800, 600);
-		this.jFrame.setTitle("Artifact - v. 0.1.0");
+		this.jFrame.setTitle(String.format("Artifact - %s", doGetVersion()));
 		this.jFrame.setLocationRelativeTo(null);
 		this.jFrame.setVisible(true);
 	}
 	
-	private void doConfigureJMenu1() {
-		this.jMenu1.add(this.jMenuItem1);
-		this.jMenu1.setText("File");
+	private void doConfigureJMenu() {
+		this.jMenu.add(this.jMenuItem);
+		this.jMenu.setText("File");
 	}
 	
 	private void doConfigureJMenuBar() {
-		this.jMenuBar.add(this.jMenu1);
+		this.jMenuBar.add(this.jMenu);
 	}
 	
-	private void doConfigureJMenuItem1() {
-		this.jMenuItem1.addActionListener(doNewExitActionListener(this.jFrame));
-		this.jMenuItem1.setText("Exit");
+	private void doConfigureJMenuItem() {
+		this.jMenuItem.addActionListener(doCreateNewExitActionListener(this.jFrame));
+		this.jMenuItem.setText("Exit");
 	}
 	
 	private void doConfigureJScrollPane1() {
@@ -183,12 +202,12 @@ final class GUI implements Runnable {
 	}
 	
 	private void doConfigureThread() {
-		Thread.setDefaultUncaughtExceptionHandler(ArtifactUtilities.newUncaughtExceptionHandler(this.jTextArea));
+		Thread.setDefaultUncaughtExceptionHandler(doCreateNewUncaughtExceptionHandler(this.jTextArea));
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	private static ActionListener doNewExitActionListener(final JFrame jFrame) {
+	private static ActionListener doCreateNewExitActionListener(final JFrame jFrame) {
 		return e -> {
 			switch(JOptionPane.showConfirmDialog(jFrame, "Are you sure you want to quit?")) {
 				case JOptionPane.OK_OPTION:
@@ -202,7 +221,7 @@ final class GUI implements Runnable {
 	}
 	
 	private static Icon doCreateIcon(final String path, final String description) {
-		final URL uRL = ArtifactUtilities.class.getResource(Objects.requireNonNull(path, "path == null"));
+		final URL uRL = GUI.class.getResource(Objects.requireNonNull(path, "path == null"));
 		
 		if(uRL != null) {
 			return new ImageIcon(uRL, Objects.requireNonNull(description, "description == null"));
@@ -211,13 +230,28 @@ final class GUI implements Runnable {
 		return null;
 	}
 	
-	private static void doStart(final String extension) {
-		SwingUtilities.invokeLater(new GUI(extension));
+	private static String doGetVersion() {
+		final Package package_ = GUI.class.getPackage();
+		
+		if(package_ != null) {
+			final String implementationVersion = package_.getImplementationVersion();
+			
+			if(implementationVersion != null) {
+				return String.format("v.%s", implementationVersion);
+			}
+		}
+		
+		return "v.0.0.0";
+	}
+	
+	private static UncaughtExceptionHandler doCreateNewUncaughtExceptionHandler(final JTextArea jTextArea) {
+		return (thread, throwable) -> jTextArea.append(Throwables.getStackTrace(throwable, thread) + "\n");
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	private static final class EvaluatingAction extends AbstractAction {
+		private static final ScriptEngineManager DEFAULT_SCRIPT_ENGINE_MANAGER = new ScriptEngineManager();
 		private static final long serialVersionUID = 1L;
 		
 		////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +263,7 @@ final class GUI implements Runnable {
 		
 		public EvaluatingAction(final JTextPane jTextPane, final String extension) {
 			this.jTextPane = Objects.requireNonNull(jTextPane, "jTextPane == null");
-			this.scriptEngine = ArtifactUtilities.getDefaultScriptEngineManager().getEngineByExtension(extension);
+			this.scriptEngine = DEFAULT_SCRIPT_ENGINE_MANAGER.getEngineByExtension(extension);
 		}
 		
 		////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -264,7 +298,7 @@ final class GUI implements Runnable {
 		
 		public JJavaTextPane() {
 			addCaretListener(new CaretListenerImpl());
-			setMargin(new Insets(10,10,10,10));
+			setMargin(new Insets(10, 10, 10, 10));
 		}
 		
 		////////////////////////////////////////////////////////////////////////////////////////////////////

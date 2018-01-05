@@ -26,6 +26,10 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 final class CLI {
+	private static final ScriptEngineManager DEFAULT_SCRIPT_ENGINE_MANAGER = new ScriptEngineManager();
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	
 	private CLI() {
 		
 	}
@@ -34,7 +38,7 @@ final class CLI {
 	
 	public static void start(final String extension) {
 		try(final Scanner scanner = new Scanner(System.in)) {
-			final ScriptEngineManager scriptEngineManager = ArtifactUtilities.getDefaultScriptEngineManager();
+			final ScriptEngineManager scriptEngineManager = DEFAULT_SCRIPT_ENGINE_MANAGER;
 			
 			final ScriptEngine scriptEngine = scriptEngineManager.getEngineByExtension(Objects.requireNonNull(extension, "extension == null"));
 			
