@@ -11,9 +11,8 @@ Supported Features
 * You don't have to catch any `Exception`s thrown by a method. A catch-clause exists by default.
 * You can return anything you want from the script, but are not required to.
 * You can evaluate Java source code as part of the script itself, using the `eval(String)` method.
-* Some pragmas or pre-processor directives are supported. They all start with `#`.
-* One pragma is for importing. Use it like this `#import javax.swing.*;`.
-* One pragma is for redefining the package for the class. Use it like this `#package com.company;`.
+* To import packages you can use import statements like `import javax.swing.*;`.
+* To change package you can use package statements like `package com.company;`.
 * You can set a variable to the `ScriptContext` using the `set(String, Object)` method.
 * You can get a variable from the `ScriptContext` using the `get(String)` method.
 * Variables starting with `$` are treated in a special way. They are substituted with a cast to a variable from the `ScriptContext`.
@@ -48,11 +47,11 @@ public class HelloWorld {
 The following example demonstrates some of the features provided by Artifact:
 
 ```java
-//Here we show how to change the package using the package pragma:
-#package org.macroing.cel4j.artifact.example;
+//Here we show how to change the package:
+package org.macroing.cel4j.artifact.example;
 
-//Here we show how to import all public members of a class using the import pragma:
-#import static java.lang.Math.*;
+//Here we show how to import all public members of a class using a static import statement:
+import static java.lang.Math.*;
 
 double a = 3.0D;
 double b = 5.0D;

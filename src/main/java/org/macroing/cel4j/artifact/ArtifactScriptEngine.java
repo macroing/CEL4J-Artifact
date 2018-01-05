@@ -57,15 +57,15 @@ import javax.tools.ToolProvider;
 
 final class ArtifactScriptEngine extends AbstractScriptEngine implements Compilable {
 	private static final AtomicInteger IDENTIFIER;
-	private static final Pattern PATTERN_IMPORT_PRAGMA;
-	private static final Pattern PATTERN_PACKAGE_PRAGMA;
+	private static final Pattern PATTERN_IMPORT;
+	private static final Pattern PATTERN_PACKAGE;
 	private static final Pattern PATTERN_SUBSTITUTION_VARIABLE;
 	private static final String LINE_SEPARATOR;
-	private static final String NAME_IMPORT_PRAGMA;
-	private static final String NAME_PACKAGE_PRAGMA;
+	private static final String NAME_IMPORT;
+	private static final String NAME_PACKAGE;
 	private static final String REGEX_IDENTIFIER;
-	private static final String REGEX_IMPORT_PRAGMA;
-	private static final String REGEX_PACKAGE_PRAGMA;
+	private static final String REGEX_IMPORT;
+	private static final String REGEX_PACKAGE;
 	private static final String REGEX_SUBSTITUTION_VARIABLE;
 	private static final String REGEX_WHITE_SPACE;
 	private static final String TMP_DIRECTORY;
@@ -91,17 +91,17 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		LINE_SEPARATOR = System.getProperty("line.separator");
 		TMP_DIRECTORY = System.getProperty("java.io.tmpdir");
 		
-		NAME_IMPORT_PRAGMA = "ImportPragma";
-		NAME_PACKAGE_PRAGMA = "PackagePragma";
+		NAME_IMPORT = "Import";
+		NAME_PACKAGE = "Package";
 		
 		REGEX_IDENTIFIER = "(?!(abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|extends|false|finally|final|float|for|if|goto|implements|import|instanceof|interface|int|long|native|new|null|package|private|protected|public|return|short|static|strictfp|super|switch|synchronized|this|throws|throw|transient|true|try|void|volatile|while)([^\\p{javaJavaIdentifierPart}]|$))\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
-		REGEX_IMPORT_PRAGMA = String.format("#\\s*(?<%s>import(\\s+static)?\\s+%s(\\s*\\.\\s*%s)*?(\\s*\\.\\s*\\*)?\\s*;)", NAME_IMPORT_PRAGMA, REGEX_IDENTIFIER, REGEX_IDENTIFIER);
-		REGEX_PACKAGE_PRAGMA = String.format("#\\s*package\\s+(?<%s>%s(\\s*\\.\\s*%s)*?)\\s*;", NAME_PACKAGE_PRAGMA, REGEX_IDENTIFIER, REGEX_IDENTIFIER);
+		REGEX_IMPORT = String.format("(?<%s>import(\\s+static)?\\s+%s(\\s*\\.\\s*%s)*?(\\s*\\.\\s*\\*)?\\s*;)", NAME_IMPORT, REGEX_IDENTIFIER, REGEX_IDENTIFIER);
+		REGEX_PACKAGE = String.format("package\\s+(?<%s>%s(\\s*\\.\\s*%s)*?)\\s*;", NAME_PACKAGE, REGEX_IDENTIFIER, REGEX_IDENTIFIER);
 		REGEX_SUBSTITUTION_VARIABLE = String.format("\\$(%s)", REGEX_IDENTIFIER);
 		REGEX_WHITE_SPACE = "\\s+(?=((\\\\[\\\\\"]|[^\\\\\"])*\"(\\\\[\\\\\"]|[^\\\\\"])*\")*(\\\\[\\\\\"]|[^\\\\\"])*$)";
 		
-		PATTERN_IMPORT_PRAGMA = Pattern.compile(REGEX_IMPORT_PRAGMA);
-		PATTERN_PACKAGE_PRAGMA = Pattern.compile(REGEX_PACKAGE_PRAGMA);
+		PATTERN_IMPORT = Pattern.compile(REGEX_IMPORT);
+		PATTERN_PACKAGE = Pattern.compile(REGEX_PACKAGE);
 		PATTERN_SUBSTITUTION_VARIABLE = Pattern.compile(REGEX_SUBSTITUTION_VARIABLE);
 	}
 	
@@ -294,20 +294,20 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	}
 	
 	private String doSearchAndReplace(String script) throws ScriptException {
-		script = doSearchAndReplaceImportPragmas(script);
-		script = doSearchAndReplacePackagePragmas(script);
+		script = doSearchAndReplaceImports(script);
+		script = doSearchAndReplacePackages(script);
 		script = doSearchAndReplaceSubstitutionVariables(script);
 		
 		return script;
 	}
 	
-	private String doSearchAndReplaceImportPragmas(final String script) {
+	private String doSearchAndReplaceImports(final String script) {
 		final StringBuffer stringBuffer = new StringBuffer(script.length());
 		
-		final Matcher matcher = PATTERN_IMPORT_PRAGMA.matcher(script);
+		final Matcher matcher = PATTERN_IMPORT.matcher(script);
 		
 		while(matcher.find()) {
-			final String importStatement = matcher.group(NAME_IMPORT_PRAGMA);
+			final String importStatement = matcher.group(NAME_IMPORT);
 			final String replacement = "";
 			
 			this.importStatements.add(importStatement);
@@ -320,13 +320,13 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		return stringBuffer.toString();
 	}
 	
-	private String doSearchAndReplacePackagePragmas(final String script) {
+	private String doSearchAndReplacePackages(final String script) {
 		final StringBuffer stringBuffer = new StringBuffer(script.length());
 		
-		final Matcher matcher = PATTERN_PACKAGE_PRAGMA.matcher(script);
+		final Matcher matcher = PATTERN_PACKAGE.matcher(script);
 		
 		while(matcher.find()) {
-			final String packageName = matcher.group(NAME_PACKAGE_PRAGMA);
+			final String packageName = matcher.group(NAME_PACKAGE);
 			final String replacement = "";
 			
 			this.packageName = packageName;
