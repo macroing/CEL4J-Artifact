@@ -52,10 +52,10 @@ import javax.script.ScriptEngineFactory;
  * @author J&#246;rgen Lundgren
  */
 public final class ArtifactScriptEngineFactory implements ScriptEngineFactory {
-	/**
-	 * A {@code String} denoting the name of the {@code ScriptEngine} Artifact.
-	 */
-	public static final String ENGINE_NAME = "Artifact";
+	private static final String ENGINE_NAME = "Artifact";
+	private static final String ENGINE_VERSION = "0.2.0";
+	private static final String LANGUAGE_NAME = "Java";
+	private static final String LANGUAGE_VERSION = "8";
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
@@ -99,13 +99,13 @@ public final class ArtifactScriptEngineFactory implements ScriptEngineFactory {
 	/**
 	 * Returns a {@code List} with names.
 	 * <p>
-	 * The currently supported names are {@code "artifact"} and {@code "java"}.
+	 * The currently supported names are {@code "Artifact"}, {@code "artifact"}, {@code "Java"} and {@code "java"}.
 	 * 
 	 * @return a {@code List} with names
 	 */
 	@Override
 	public List<String> getNames() {
-		return Collections.unmodifiableList(new ArrayList<>(Arrays.asList("artifact", "java")));
+		return Collections.unmodifiableList(new ArrayList<>(Arrays.asList(ENGINE_NAME, ENGINE_NAME.toLowerCase(), LANGUAGE_NAME, LANGUAGE_NAME.toLowerCase())));
 	}
 	
 	/**
@@ -128,6 +128,10 @@ public final class ArtifactScriptEngineFactory implements ScriptEngineFactory {
 					return getLanguageName();
 				case ScriptEngine.LANGUAGE_VERSION:
 					return getLanguageVersion();
+				case ScriptEngine.NAME:
+					return getNames().get(0);
+				case "THREADING":
+					return null;
 				default:
 					return null;
 			}
@@ -162,14 +166,12 @@ public final class ArtifactScriptEngineFactory implements ScriptEngineFactory {
 	
 	/**
 	 * Returns a {@code String} with the version of the {@code ScriptEngine}.
-	 * <p>
-	 * The current version is {@code "1.0.0"}.
 	 * 
 	 * @return a {@code String} with the version of the {@code ScriptEngine}
 	 */
 	@Override
 	public String getEngineVersion() {
-		return "1.0.0";
+		return ENGINE_VERSION;
 	}
 	
 	/**
@@ -181,7 +183,7 @@ public final class ArtifactScriptEngineFactory implements ScriptEngineFactory {
 	 */
 	@Override
 	public String getLanguageName() {
-		return "Java";
+		return LANGUAGE_NAME;
 	}
 	
 	/**
@@ -193,41 +195,63 @@ public final class ArtifactScriptEngineFactory implements ScriptEngineFactory {
 	 */
 	@Override
 	public String getLanguageVersion() {
-		return "8";
+		return LANGUAGE_VERSION;
 	}
 	
 	/**
-	 * Returns an empty {@code String} at this time.
+	 * Returns a {@code String} which can be used to invoke a method of a Java object using the syntax of the supported scripting language.
 	 * 
 	 * @param object a {@code String} with an object
 	 * @param method a {@code String} with a method
 	 * @param args a {@code String} array with parameter arguments
-	 * @return an empty {@code String} at this time
+	 * @return a {@code String} which can be used to invoke a method of a Java object using the syntax of the supported scripting language
 	 */
 	@Override
 	public String getMethodCallSyntax(final String object, final String method, final String... args) {
-		return "";
+		final
+		StringBuilder stringBuilder = new StringBuilder();
+		stringBuilder.append(object);
+		stringBuilder.append(".");
+		stringBuilder.append(method);
+		stringBuilder.append("(");
+		
+		for(int i = 0; i < args.length; i++) {
+			stringBuilder.append(i > 0 ? ", " : "");
+			stringBuilder.append(args[i]);
+		}
+		
+		stringBuilder.append(")");
+		
+		return stringBuilder.toString();
 	}
 	
 	/**
-	 * Returns an empty {@code String} at this time.
+	 * Returns a {@code String} that can be used as a statement to display the specified {@code String} using the syntax of the supported scripting language.
 	 * 
 	 * @param toDisplay a {@code String} to display
-	 * @return an empty {@code String} at this time
+	 * @return a {@code String} that can be used as a statement to display the specified {@code String} using the syntax of the supported scripting language
 	 */
 	@Override
 	public String getOutputStatement(final String toDisplay) {
-		return "";
+		return String.format("System.out.println(\"%s\")", toDisplay);
 	}
 	
 	/**
-	 * Returns an empty {@code String} at this time.
+	 * Returns a valid scripting language executable program with given statements.
 	 * 
 	 * @param statements a {@code String} array with statements
-	 * @return an empty {@code String} at this time
+	 * @return a valid scripting language executable program with given statements
 	 */
 	@Override
 	public String getProgram(final String... statements) {
-		return "";
+		final StringBuilder stringBuilder = new StringBuilder();
+		
+		for(final String statement : statements) {
+			stringBuilder.append(statement);
+			stringBuilder.append(";");
+			stringBuilder.append(System.getProperty("line.separator"));
+		}
+		
+		return stringBuilder.toString();
 	}
 }

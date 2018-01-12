@@ -70,6 +70,8 @@ set("result", result);
 result = get("result");
 
 //If the key "result" was already associated with a value prior to the evaluation of this script, you could use $result to access it instead.
+//$result, if it's a Double like shown above, would be converted to the following code:
+//Double.class.cast(scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get("result"))
 
 System.out.println(result);
 
