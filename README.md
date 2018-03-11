@@ -1,4 +1,4 @@
-CEL4J Artifact (v. 0.2.0)
+CEL4J Artifact (v. 0.3.0)
 =========================
 CEL4J Artifact is a library that provides a ScriptEngine implementation called Artifact, that evaluates a super-set of Java source code.
 

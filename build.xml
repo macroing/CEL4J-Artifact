@@ -7,14 +7,13 @@
 	<property name="project.directory.root" location="."/>
 	<property name="project.name" value="${ant.project.name}"/>
 	<property name="project.vendor" value="Macroing.org"/>
-	<property name="project.version" value="0.2.0"/>
+	<property name="project.version" value="0.3.0"/>
 	
 	<!--The following properties are based on the above properties and don't really need to change.-->
 	<property name="project.directory.binary" location="bin"/>
 	<property name="project.directory.distribution" location="${project.directory.root}/distribution"/>
 	<property name="project.directory.distribution.current" location="${project.directory.distribution}/${project.name}"/>
 	<property name="project.directory.metainf" location="metainf"/>
-	<property name="project.directory.library" location="lib"/>
 	<property name="project.directory.resources" location="resources/main/java"/>
 	<property name="project.directory.source" location="src/main/java"/>
 	
@@ -66,8 +65,7 @@
 		
 		<!--Copy files.-->
 		<copy todir="${project.directory.distribution.current}">
-			<fileset dir="." includes="COPYING"/>
-			<fileset dir="." includes="COPYING.LESSER"/>
+			<fileset dir="." includes="LICENSE.TXT"/>
 			<fileset dir="." includes="README.md"/>
 		</copy>
 		
