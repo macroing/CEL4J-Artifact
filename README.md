@@ -47,35 +47,35 @@ public class HelloWorld {
 The following example demonstrates some of the features provided by Artifact:
 
 ```java
-//Here we show how to change the package:
+//Changes the package:
 package org.macroing.cel4j.artifact.example;
 
-//Here we show how to import all public members of a class using a static import statement:
+//Imports all public members of a class using a static import statement:
 import static java.lang.Math.*;
 
 double a = 3.0D;
 double b = 5.0D;
 
-//Here we show that the static import worked:
+//Here we use two of the public members that were statically imported:
 double max = max(a, b);
 double min = min(a, b);
 
-//Here we show the eval(String) method that can be called from within the script:
+//The eval(String) method can be called from within the script:
 Object result = eval(String.format("return %s + %s;", max, min));
 
-//Here we show how to set a value given a key:
+//You can set a value to the ScriptContext, given a key:
 set("result", result);
 
-//Here we show how to get the value using its key once set:
+//You can get the value from the ScriptContext, given its key:
 result = get("result");
 
 //If the key "result" was already associated with a value prior to the evaluation of this script, you could use $result to access it instead.
-//$result, if it's a Double like shown above, would be converted to the following code:
+//$result would be converted to the following code, if it's of type Double like shown above:
 //Double.class.cast(scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get("result"))
 
 System.out.println(result);
 
-//Here we show that we can return a result from the script:
+//You may optionally return a result from the script:
 return result;
 ```
 

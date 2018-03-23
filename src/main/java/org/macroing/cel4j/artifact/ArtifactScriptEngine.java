@@ -292,7 +292,6 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		document.linef("			return null;");
 		document.linef("		}");
 		document.linef("	}");
-		document.linef("	");
 		document.linef("}");
 		
 		return document.toString();
