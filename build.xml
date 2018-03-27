@@ -52,8 +52,6 @@
 			</manifest>
 			
 			<fileset dir="${project.directory.resources}" excludes="**/.*/**"/>
-			
-			<metainf dir="${project.directory.metainf}" excludes="**/.*/**"/>
 		</jar>
 		
 		<!--Generate Javadocs.-->
