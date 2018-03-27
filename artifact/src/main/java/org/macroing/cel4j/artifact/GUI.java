@@ -277,7 +277,7 @@ final class GUI {
 		public void actionPerformed(final ActionEvent actionEvent) {
 			try {
 				this.scriptEngine.eval(this.jTextPane.getDocument().getText(0, this.jTextPane.getDocument().getLength()));
-			} catch(final BadLocationException | ScriptException e) {
+			} catch(final BadLocationException | NullPointerException | ScriptException e) {
 				Throwables.handleThrowable(e);
 			}
 		}

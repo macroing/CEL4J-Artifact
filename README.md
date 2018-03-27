@@ -1,4 +1,4 @@
-CEL4J Artifact (v. 0.3.0)
+CEL4J Artifact (v. 0.4.0)
 =========================
 CEL4J Artifact is a library that provides a ScriptEngine implementation called Artifact, that evaluates a super-set of Java source code.
 
@@ -121,6 +121,24 @@ The packages currently imported, as shown in the list below, may change in the f
 * `javax.swing.undo.*`
 * `javax.tools.*`
 * `org.macroing.cel4j.artifact.*`
+
+Getting Started
+---------------
+### Apache Ant
+To clone this repository, build the project and run it in GUI-mode, you can type the following in Git Bash.
+```bash
+git clone https://github.com/macroing/CEL4J-Artifact.git
+cd CEL4J-Artifact
+ant
+cd distribution/org.macroing.cel4j.artifact
+java -jar org.macroing.cel4j.artifact.jar -g
+```
+
+### Gradle
+Coming soon...
+
+### Maven
+Coming soon...
 
 Dependencies
 ------------
