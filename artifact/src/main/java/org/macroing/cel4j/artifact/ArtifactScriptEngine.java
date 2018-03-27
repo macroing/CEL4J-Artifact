@@ -34,6 +34,7 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -65,9 +67,12 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	private static final Pattern PATTERN_IMPORT;
 	private static final Pattern PATTERN_PACKAGE;
 	private static final Pattern PATTERN_SUBSTITUTION_VARIABLE;
+	private static final String DEFAULT_PACKAGE_NAME;
 	private static final String LINE_SEPARATOR;
 	private static final String NAME_IMPORT;
 	private static final String NAME_PACKAGE;
+	private static final String PROPERTY_DUMP;
+	private static final String PROPERTY_IMPORT;
 	private static final String REGEX_IDENTIFIER;
 	private static final String REGEX_IMPORT;
 	private static final String REGEX_PACKAGE;
@@ -77,21 +82,35 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	private final List<String> importStatements = new ArrayList<>();
-	private final Map<String, CompiledScript> compiledScripts = new HashMap<>();
+	private final AtomicReference<String> packageName;
+	private final List<String> importStatements;
+	private final List<String> importStatementsOptional;
+	private final List<String> importStatementsRequired;
+	private final Map<String, CompiledScript> compiledScripts;
 	private final ScriptEngineFactory scriptEngineFactory;
-	private String packageName = "org.macroing.cel4j.artifact";
+	private final boolean isDumpingSourceCode;
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	public ArtifactScriptEngine(final ScriptEngineFactory scriptEngineFactory) {
 		this.scriptEngineFactory = Objects.requireNonNull(scriptEngineFactory, "scriptEngineFactory == null");
+		this.packageName = new AtomicReference<>(DEFAULT_PACKAGE_NAME);
+		this.importStatements = new ArrayList<>();
+		this.importStatementsOptional = doCreateImportStatementsOptional();
+		this.importStatementsRequired = doCreateImportStatementsRequired();
+		this.compiledScripts = new HashMap<>();
+		this.isDumpingSourceCode = Objects.toString(System.getProperty(PROPERTY_DUMP)).equals("true");
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	static {
 		IDENTIFIER = new AtomicInteger(0);
+		
+		DEFAULT_PACKAGE_NAME = "org.macroing.cel4j.artifact";
+		
+		PROPERTY_DUMP = "org.macroing.cel4j.artifact.dump";
+		PROPERTY_IMPORT = "org.macroing.cel4j.artifact.import";
 		
 		LINE_SEPARATOR = System.getProperty("line.separator");
 		TMP_DIRECTORY = System.getProperty("java.io.tmpdir");
@@ -146,8 +165,8 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	
 	private CompiledScript doCompile(final String script) throws ScriptException {
 		final String script0 = doSearchAndReplace(script);
-		final String className = "CompiledScriptImpl" + IDENTIFIER.incrementAndGet();
-		final String packageName = this.packageName;
+		final String className = "ArtifactScriptImpl" + IDENTIFIER.incrementAndGet();
+		final String packageName = this.packageName.get();
 		final String directory = packageName.replace(".", "/");
 		
 		final File binaryDirectory = doGetBinaryDirectory();
@@ -221,56 +240,20 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		Document document = new Document();
 		document.linef("package %s;", packageName);
 		document.linef("");
-		document.linef("import static java.lang.Math.*;");
-		document.linef("");
-		document.linef("import java.awt.*;");
-		document.linef("import java.awt.color.*;");
-		document.linef("import java.awt.event.*;");
-		document.linef("import java.awt.font.*;");
-		document.linef("import java.awt.geom.*;");
-		document.linef("import java.awt.image.*;");
-		document.linef("import java.lang.ref.*;");
-		document.linef("import java.lang.reflect.*;");
-		document.linef("import java.math.*;");
-		document.linef("import java.net.*;");
-		document.linef("import java.nio.*;");
-		document.linef("import java.nio.channels.*;");
-		document.linef("import java.nio.charset.*;");
-		document.linef("import java.nio.file.*;");
-		document.linef("import java.nio.file.attribute.*;");
-		document.linef("import java.text.*;");
-		document.linef("import java.util.*;");
-		document.linef("import java.util.concurrent.*;");
-		document.linef("import java.util.concurrent.atomic.*;");
-		document.linef("import java.util.concurrent.locks.*;");
-		document.linef("import java.util.jar.*;");
-		document.linef("import java.util.logging.*;");
-		document.linef("import java.util.prefs.*;");
-		document.linef("import java.util.regex.*;");
-		document.linef("import java.util.zip.*;");
-		document.linef("");
-		document.linef("import javax.script.*;");
-		document.linef("import javax.swing.*;");
-		document.linef("import javax.swing.border.*;");
-		document.linef("import javax.swing.colorchooser.*;");
-		document.linef("import javax.swing.event.*;");
-		document.linef("import javax.swing.filechooser.*;");
-		document.linef("import javax.swing.table.*;");
-		document.linef("import javax.swing.text.*;");
-		document.linef("import javax.swing.tree.*;");
-		document.linef("import javax.swing.undo.*;");
-		document.linef("import javax.tools.*;");
-		document.linef("");
-		document.linef("import org.macroing.cel4j.artifact.*;");
-		document.linef("");
 		
-		if(this.importStatements.size() > 0) {
-			for(final String importStatement : this.importStatements) {
-				document.linef(importStatement);
-				document.linef("");
-			}
+		for(final String importStatement : this.importStatementsRequired) {
+			document.linef(importStatement);
 		}
 		
+		for(final String importStatement : this.importStatementsOptional) {
+			document.linef(importStatement);
+		}
+		
+		for(final String importStatement : this.importStatements) {
+			document.linef(importStatement);
+		}
+		
+		document.linef("");
 		document.linef("public final class %s extends ArtifactScript {", className);
 		document.linef("	public %s(final ScriptEngine scriptEngine) {", className);
 		document.linef("		super(scriptEngine);");
@@ -281,7 +264,7 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		document.linef("		Exception exception = null;");
 		document.linef("		");
 		document.linef("		try {");
-		document.linef("			%s", script);
+		document.linef("			%s", doFormatScript(script));
 		document.linef("		} catch(final Exception e) {");
 		document.linef("			exception = e;");
 		document.linef("		}");
@@ -333,7 +316,7 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 			final String packageName = matcher.group(NAME_PACKAGE);
 			final String replacement = "";
 			
-			this.packageName = packageName;
+			this.packageName.set(packageName);
 			
 			matcher.appendReplacement(stringBuffer, replacement);
 		}
@@ -372,6 +355,10 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 	
 	private void doGenerateSourceCode(final String packageName, final String className, final String script, final File sourceFile) throws ScriptException {
 		final String sourceCode = doGenerateSourceCode(packageName, className, script);
+		
+		if(this.isDumpingSourceCode) {
+			System.out.println(sourceCode);
+		}
 		
 		try(final FileWriter fileWriter = new FileWriter(sourceFile)) {
 			fileWriter.write(sourceCode);
@@ -428,6 +415,82 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		return files;
 	}
 	
+	private static List<String> doCreateImportStatementsOptional() {
+		final String importFilename = System.getProperty(PROPERTY_IMPORT);
+		
+		if(importFilename != null) {
+			final File importFile = new File(importFilename);
+			
+			if(importFile.isFile()) {
+				try {
+					final List<String> importStatementsOptional = new ArrayList<>(Files.readAllLines(importFile.toPath()));
+					
+					for(int i = importStatementsOptional.size() - 1; i >= 0; i--) {
+						final String importStatementOptional = importStatementsOptional.get(i);
+						
+						if(!PATTERN_IMPORT.matcher(importStatementOptional).matches()) {
+							importStatementsOptional.remove(i);
+						}
+					}
+					
+					return importStatementsOptional;
+				} catch(final IOException e) {
+//					Fall back on default behavior for now.
+				}
+			}
+		}
+		
+		final List<String> importStatementsOptional = new ArrayList<>();
+		
+		importStatementsOptional.add("import static java.lang.Math.*;");
+		importStatementsOptional.add("import java.awt.*;");
+		importStatementsOptional.add("import java.awt.color.*;");
+		importStatementsOptional.add("import java.awt.event.*;");
+		importStatementsOptional.add("import java.awt.font.*;");
+		importStatementsOptional.add("import java.awt.geom.*;");
+		importStatementsOptional.add("import java.awt.image.*;");
+		importStatementsOptional.add("import java.lang.ref.*;");
+		importStatementsOptional.add("import java.lang.reflect.*;");
+		importStatementsOptional.add("import java.math.*;");
+		importStatementsOptional.add("import java.net.*;");
+		importStatementsOptional.add("import java.nio.*;");
+		importStatementsOptional.add("import java.nio.channels.*;");
+		importStatementsOptional.add("import java.nio.charset.*;");
+		importStatementsOptional.add("import java.nio.file.*;");
+		importStatementsOptional.add("import java.nio.file.attribute.*;");
+		importStatementsOptional.add("import java.text.*;");
+		importStatementsOptional.add("import java.util.*;");
+		importStatementsOptional.add("import java.util.concurrent.*;");
+		importStatementsOptional.add("import java.util.concurrent.atomic.*;");
+		importStatementsOptional.add("import java.util.concurrent.locks.*;");
+		importStatementsOptional.add("import java.util.jar.*;");
+		importStatementsOptional.add("import java.util.logging.*;");
+		importStatementsOptional.add("import java.util.prefs.*;");
+		importStatementsOptional.add("import java.util.regex.*;");
+		importStatementsOptional.add("import java.util.zip.*;");
+		importStatementsOptional.add("import javax.swing.*;");
+		importStatementsOptional.add("import javax.swing.border.*;");
+		importStatementsOptional.add("import javax.swing.colorchooser.*;");
+		importStatementsOptional.add("import javax.swing.event.*;");
+		importStatementsOptional.add("import javax.swing.filechooser.*;");
+		importStatementsOptional.add("import javax.swing.table.*;");
+		importStatementsOptional.add("import javax.swing.text.*;");
+		importStatementsOptional.add("import javax.swing.tree.*;");
+		importStatementsOptional.add("import javax.swing.undo.*;");
+		importStatementsOptional.add("import javax.tools.*;");
+		
+		return importStatementsOptional;
+	}
+	
+	private static List<String> doCreateImportStatementsRequired() {
+		final List<String> importStatementsRequired = new ArrayList<>();
+		
+		importStatementsRequired.add("import javax.script.*;");
+		importStatementsRequired.add("import org.macroing.cel4j.artifact.*;");
+		
+		return importStatementsRequired;
+	}
+	
 	private static String doCast(final Class<?> clazz, final String variableName) {
 		String className = clazz.getName();
 		
@@ -440,6 +503,22 @@ final class ArtifactScriptEngine extends AbstractScriptEngine implements Compila
 		}
 		
 		return String.format("%s.class.cast(scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(\"%s\"))", className, variableName);
+	}
+	
+	private static String doFormatScript(final String script) {
+		final String[] lines = script.trim().split("\n");
+		
+		final StringBuilder stringBuilder = new StringBuilder();
+		
+		for(int i = 0; i < lines.length; i++) {
+			final String line = lines[i];
+			
+			stringBuilder.append(i > 0 ? "			" : "");
+			stringBuilder.append(line);
+			stringBuilder.append(i + 1 < lines.length ? LINE_SEPARATOR : "");
+		}
+		
+		return stringBuilder.toString();
 	}
 	
 	private static String doReadFrom(final Reader reader) throws ScriptException {
