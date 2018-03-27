@@ -1,0 +1,2 @@
+rootProject.name = 'CEL4J-Artifact'
+include 'artifact'
