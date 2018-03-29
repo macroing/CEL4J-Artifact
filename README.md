@@ -1,4 +1,4 @@
-CEL4J Artifact (v. 0.4.0)
+CEL4J Artifact (v. 0.5.0)
 =========================
 CEL4J Artifact is a library that provides a ScriptEngine implementation called Artifact, that evaluates a super-set of Java source code.
 
@@ -19,6 +19,7 @@ Supported Features
 * Variables starting with `$` are treated in a special way. They are substituted with a cast to their type, as they are stored in the `ScriptContext`.
 * A script has access to the `ScriptContext` using the variable `scriptContext`.
 * It's possible to dump the generated source code to system out by using the system property `-Dorg.macroing.cel4j.artifact.dump=true`.
+* You can use the ``Artifact`` class to configure parts of Artifact programmatically on a global level.
 * Artifact comes with an interactive scripting tool that can be run in CLI- or GUI mode.
 
 Examples
@@ -81,57 +82,66 @@ System.out.println(result);
 return result;
 ```
 
-Imported Packages
+Import Statements
 -----------------
-Artifact has two types of imported packages. These are the required packages that always will be present, and the optional packages that may be overridden.
+Artifact has four types of import statement configurations. These are the required import statements that always will be present, the default import statements that may be overridden, the global import statements that can be added via an API and the local import statements that can be added from within a script.
 
-### Required Packages
-These packages are required.
+### Required Import Statements
+These import statements are required.
 
-* `javax.script.*`
-* `org.macroing.cel4j.artifact.*`
+* `import javax.script.*;`
+* `import org.macroing.cel4j.artifact.*;`
 
-### Optional Packages
-These packages are optional and subject to change. It may turn out that there are too many ambiguous classes and interfaces.
+### Default Import Statements
+The default import statements can be separated into two groups; the internally defined and the externally defined.
 
-It's possible to override these packages. To override them, use a system property called ``org.macroing.cel4j.artifact.import``. The value supplied should be a filename pointing to a file with one import statement per line.
+The internally defined default import statements are subject to change. It may turn out that too many ambiguous classes and interfaces are imported.
 
-* `java.lang.Math.*` (static)
-* `java.awt.*`
-* `java.awt.color.*`
-* `java.awt.event.*`
-* `java.awt.font.*`
-* `java.awt.geom.*`
-* `java.awt.image.*`
-* `java.lang.ref.*`
-* `java.lang.reflect.*`
-* `java.math.*`
-* `java.net.*`
-* `java.nio.*`
-* `java.nio.channels.*`
-* `java.nio.charset.*`
-* `java.nio.file.*`
-* `java.nio.file.attribute.*`
-* `java.text.*`
-* `java.util.*`
-* `java.util.concurrent.*`
-* `java.util.concurrent.atomic.*`
-* `java.util.concurrent.locks.*`
-* `java.util.jar.*`
-* `java.util.logging.*`
-* `java.util.prefs.*`
-* `java.util.regex.*`
-* `java.util.zip.*`
-* `javax.swing.*`
-* `javax.swing.border.*`
-* `javax.swing.colorchooser.*`
-* `javax.swing.event.*`
-* `javax.swing.filechooser.*`
-* `javax.swing.table.*`
-* `javax.swing.text.*`
-* `javax.swing.tree.*`
-* `javax.swing.undo.*`
-* `javax.tools.*`
+The externally defined default import statements overrides the internally defined. To override them, use a system property called ``org.macroing.cel4j.artifact.import``. The value supplied should be a filename pointing to a file with one import statement per line.
+
+The internally defined default import statements are currently the following:
+* `import java.lang.Math.*;` (static)
+* `import java.awt.*;`
+* `import java.awt.color.*;`
+* `import java.awt.event.*;`
+* `import java.awt.font.*;`
+* `import java.awt.geom.*;`
+* `import java.awt.image.*;`
+* `import java.lang.ref.*;`
+* `import java.lang.reflect.*;`
+* `import java.math.*;`
+* `import java.net.*;`
+* `import java.nio.*;`
+* `import java.nio.channels.*;`
+* `import java.nio.charset.*;`
+* `import java.nio.file.*;`
+* `import java.nio.file.attribute.*;`
+* `import java.text.*;`
+* `import java.util.*;`
+* `import java.util.concurrent.*;`
+* `import java.util.concurrent.atomic.*;`
+* `import java.util.concurrent.locks.*;`
+* `import java.util.jar.*;`
+* `import java.util.logging.*;`
+* `import java.util.prefs.*;`
+* `import java.util.regex.*;`
+* `import java.util.zip.*;`
+* `import javax.swing.*;`
+* `import javax.swing.border.*;`
+* `import javax.swing.colorchooser.*;`
+* `import javax.swing.event.*;`
+* `import javax.swing.filechooser.*;`
+* `import javax.swing.table.*;`
+* `import javax.swing.text.*;`
+* `import javax.swing.tree.*;`
+* `import javax.swing.undo.*;`
+* `import javax.tools.*;`
+
+### Global Import Statements
+These import statements can be added from the ``Artifact`` class.
+
+### Local Import Statements
+These import statements can be added from within a script.
 
 Getting Started
 ---------------
@@ -164,7 +174,7 @@ When you omit the `-e [extension]` flag, Artifact will automatically be used as 
 
 When you omit the `-g` flag, the CLI-program will automatically be used.
 
-If you use the GUI-program, you will find out that some syntax highlighting is supported.
+The GUI-program has support for some syntax highlighting.
 
 Dependencies
 ------------
