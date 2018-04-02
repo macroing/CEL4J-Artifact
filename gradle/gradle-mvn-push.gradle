@@ -33,7 +33,7 @@ def findProperty(String key) {
 }
 
 def getReleaseRepositoryUrl() {
-    return findProperty('RELEASE_REPOSITORY_URL') ?: "https://api.bintray.com/maven/macroing/maven/cel4j-artifact"
+    return findProperty('RELEASE_REPOSITORY_URL') ?: "https://api.bintray.com/maven/macroing-org/maven/CEL4J-Artifact"
 }
 
 def getSnapshotRepositoryUrl() {
