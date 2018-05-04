@@ -9,7 +9,7 @@ Supported Features
 * Full Java-compatibility. You can use any Java source code that can be executed from within a Java method.
 * Some of the more common packages from the standard Java library are imported by default.
 * You may override most of the imported packages by specifying the system property ``-Dorg.macroing.cel4j.artifact.import="file.txt"``, which points to a file with one import statement per line.
-* You don't have to catch any `Exception`s thrown by a method. The default catch-clause will take care of that for you.
+* You don't have to catch any `Exception`s thrown by a method. A default catch-clause will take care of that for you.
 * You can return anything you want from the script, but are not required to.
 * You can evaluate Java source code as part of the script itself, using the `eval(String)` method.
 * To import packages you can use import statements like `import javax.swing.*;`.
@@ -100,7 +100,7 @@ The internally defined default import statements are subject to change. It may t
 The externally defined default import statements overrides the internally defined. To override them, use a system property called ``org.macroing.cel4j.artifact.import``. The value supplied should be a filename pointing to a file with one import statement per line.
 
 The internally defined default import statements are currently the following:
-* `import java.lang.Math.*;` (static)
+* `import static java.lang.Math.*;`
 * `import java.awt.*;`
 * `import java.awt.color.*;`
 * `import java.awt.event.*;`
