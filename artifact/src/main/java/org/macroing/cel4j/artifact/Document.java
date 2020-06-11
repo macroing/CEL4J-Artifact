@@ -41,7 +41,7 @@ final class Document {
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	public Document linef(final String string, final Object... objects) {
-		this.stringBuilder.append(String.format(Objects.requireNonNull(string, "textAfterIndentationFormat == null"), Objects.requireNonNull(objects, "objects == null")) + LINE_SEPARATOR);
+		this.stringBuilder.append(String.format(Objects.requireNonNull(string, "string == null"), Objects.requireNonNull(objects, "objects == null")) + LINE_SEPARATOR);
 		
 		return this;
 	}
